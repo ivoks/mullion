@@ -1,3 +1,22 @@
+mullion (0.2.0) resolute; urgency=medium
+
+  * Screen edge switching:
+    - New default "Show a button" mode: reaching the edge next to the other
+      computer shows a "Switch to …" pop-up; nothing changes unless it is
+      clicked. The previous behaviour is "Switch when pushed".
+    - Push mode needs a firmer push (300 px by default), adjustable as
+      Push Strength (Light, Medium, Firm), and the pointer must then stay
+      at the edge for half a second, so a quick flick doesn't switch.
+    - The edge is ignored while a mouse button is held, near the corners
+      (top panel, Activities corner, bottom 48 px) and for 3 s after the
+      keyboard and mouse arrive.
+    - "mullion cross <edge> --check" tells whether an edge leads to the
+      other computer.
+    - Edge events are logged to the journal.
+  * Extension behaviour checks in make check.
+
+ -- Ante Karamatic <ivoks@ubuntu.com>  Thu, 26 Nov 2026 12:43:38 +0100
+
 mullion (0.1.0) resolute; urgency=medium
 
   * Initial release.
