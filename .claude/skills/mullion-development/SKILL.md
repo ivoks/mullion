@@ -121,12 +121,15 @@ covered by `tests/extension/check.js`.
   then the `Co-Authored-By:` trailer the session specifies.
 - After pushing, watch CI through the public API (no auth needed):
   `curl -s "https://api.github.com/repos/ivoks/mullion/actions/runs?per_page=1&head_sha=$(git rev-parse HEAD)"`.
-  CI job logs need a login; reproduce failures with `ci-replay.sh` instead.
+  `gh` is logged in to the user's GitHub account (`gh auth status`), so
+  `gh run view <id> --log-failed -R ivoks/mullion` shows a failed job's
+  log; `ci-replay.sh` reproduces it locally.
 - Releases only when asked. Version lives in `mullion/__init__.py`,
   `debian/changelog` and the man page header; `tests/test_release.py`
-  checks they agree. You can tag and push, build the assets from the tag
-  (`git archive`), and write release notes, but creating the GitHub release
-  page needs a token you don't have — hand that step to the user.
+  checks they agree. You tag and push, build the assets from the tag
+  (`git archive`), write release notes, and publish the GitHub release
+  with `gh release create … -R ivoks/mullion`, then verify the public
+  downloads against `SHA256SUMS`.
 
 `references/workflow.md` has the exact commands for translations,
 packaging, CI replay and releases.

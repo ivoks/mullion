@@ -69,9 +69,32 @@ curl -s "https://api.github.com/repos/ivoks/mullion/actions/runs?per_page=1&head
    `tests/test_release.py` checks all three agree.
 2. Commit "Release X.Y.Z", `git tag -a vX.Y.Z -m "Mullion X.Y.Z …"`, push
    `main` and the tag, wait for CI.
-3. Build assets from the tag: `git archive --prefix=mullion-X.Y.Z/ -o
-   mullion-X.Y.Z.tar.gz vX.Y.Z`, build the .deb from that tree, write
-   `SHA256SUMS` and `RELEASE_NOTES.md` into `~/Projekti/mullion-X.Y.Z-release/`.
-4. The user publishes the GitHub release (no token here) — give them the
-   web link and a `gh release create` command; afterwards verify the
-   assets through the public API and check their checksums.
+3. Build assets from the tag into `~/Projekti/mullion-X.Y.Z-release/`:
+   ```sh
+   R=~/Projekti/mullion-X.Y.Z-release; mkdir -p $R
+   git archive --prefix=mullion-X.Y.Z/ -o $R/mullion-X.Y.Z.tar.gz vX.Y.Z
+   B=$(mktemp -d); tar -xzf $R/mullion-X.Y.Z.tar.gz -C $B
+   (cd $B/mullion-X.Y.Z && dpkg-buildpackage -us -uc -b > $B/build.log 2>&1)
+   lintian --fail-on error,warning $B/mullion_X.Y.Z_all.deb
+   cp $B/mullion_X.Y.Z_all.deb $R/; rm -rf $B
+   cd $R && sha256sum mullion-X.Y.Z.tar.gz mullion_X.Y.Z_all.deb > SHA256SUMS
+   ```
+   (`scripts/build-deb.sh` needs a git checkout, so it can't build the
+   unpacked archive.) Write `RELEASE_NOTES.md` there too, in the style of
+   the previous release's notes; refer to settings by their GUI labels.
+4. Publish the release (`gh` is logged in to the user's account):
+   ```sh
+   cd ~/Projekti/mullion-X.Y.Z-release
+   gh release create vX.Y.Z -R ivoks/mullion --title "Mullion X.Y.Z" \
+     --notes-file RELEASE_NOTES.md mullion_X.Y.Z_all.deb mullion-X.Y.Z.tar.gz SHA256SUMS
+   ```
+   Run it from the X.Y.Z directory: the 0.2.0 release first went out with
+   0.1.0's files attached. Fix wrong assets with `gh release delete-asset
+   vX.Y.Z <name> -y -R ivoks/mullion` and `gh release upload vX.Y.Z … --clobber`.
+5. Verify: the asset names and sizes from
+   `https://api.github.com/repos/ivoks/mullion/releases/tags/vX.Y.Z`, then
+   download each `browser_download_url` without auth and run
+   `sha256sum -c SHA256SUMS`; also check `dpkg-deb -f … Version`. Right
+   after an upload the public download URLs can serve the old files or 404
+   for a minute or two (`gh release download` is already current), so
+   retry before calling it broken.
