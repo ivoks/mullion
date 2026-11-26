@@ -159,8 +159,9 @@ that edge:
 - **Show a button** (default): a small pop-up appears at the edge with
   *Switch to …* (your name for the other computer); nothing changes unless
   you click it. It disappears again when you move away.
-- **Switch when pushed**: push the pointer into the edge to switch.
-  **Push Strength** sets how far it must be pushed within a second: Light
+- **Switch when pushed**: push the pointer into the edge and keep it there
+  for half a second to switch; moving away sooner cancels, so a quick
+  flick to the edge doesn't switch. **Push Strength** sets how far it must be pushed within a second: Light
   (150 px), Medium (300 px, default) or Firm (500 px).
 
 Wayland doesn't let applications see the pointer, so this is done by the

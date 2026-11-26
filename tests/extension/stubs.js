@@ -100,10 +100,10 @@ export const Main = {
 export class Extension {}
 export const _ = s => s;
 
-export const state = {mods: 0, neighbours: {}, connectorIndex: {}};
+export const state = {x: 0, y: 500, mods: 0, neighbours: {}, connectorIndex: {}};
 
 globalThis.global = {
-    get_pointer: () => [0, 0, state.mods],
+    get_pointer: () => [state.x, state.y, state.mods],
     backend: {
         get_monitor_manager: () => ({
             get_monitor_for_connector: c => state.connectorIndex[c] ?? -1,

@@ -35,6 +35,12 @@ function settle() {
     while (GLib.get_monotonic_time() < end)
         ctx.iteration(false);
 }
+function wait(ms) {
+    const ctx = GLib.MainContext.default();
+    const end = GLib.get_monotonic_time() + ms * 1000;
+    while (GLib.get_monotonic_time() < end)
+        ctx.iteration(false);
+}
 function spawned() {
     settle();
     try {
@@ -52,7 +58,7 @@ check('modules load', typeof createIndicator === 'function' &&
 
 const ext = new Ext();
 Object.assign(ext, {_barriers: [], _pressure: [], _lastSwitch: 0,
-    _lastArrival: 0, _checking: false, _indicator: null,
+    _lastArrival: 0, _checking: false, _dwellId: 0, _indicator: null,
     _configFile: configFile, _popup: new EdgePopup(e => ext._runCross(e))});
 
 // --- barriers -----------------------------------------------------------
@@ -93,9 +99,27 @@ ext._lastArrival = 0;
 
 forget();
 ext._onEdge('left');
-check('push mode: a push runs "mullion cross left"', spawned() === 'cross left');
+check('push mode: a push and staying at the edge runs "mullion cross left"',
+    spawned() === 'cross left');
+ext._lastSwitch = 0;
 
 forget();
+ext._onEdge('left');
+wait(100);
+state.x = 400;                              // flicked to the edge and back
+check('push mode: leaving the edge right after the push does nothing',
+    spawned() === '' && !ext._dwellId);
+state.x = 0;
+
+forget();
+ext._onEdge('left');
+state.mods = 1 << 8;                        // started dragging at the edge
+check('push mode: pressing a button while waiting at the edge does nothing',
+    spawned() === '');
+state.mods = 0;
+
+forget();
+ext._lastSwitch = GLib.get_monotonic_time() / 1000;
 ext._onEdge('left');
 check('a second push within the cooldown does nothing', spawned() === '');
 ext._lastSwitch = 0;

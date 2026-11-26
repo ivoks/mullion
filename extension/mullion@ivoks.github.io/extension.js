@@ -42,6 +42,11 @@ const DEFAULT_PRESSURE = 300;
 const BUTTON_PRESSURE = 30;
 const PRESSURE_TIMEOUT = 1000;      // ms
 const COOLDOWN_MS = 2000;           // ignore further pushes while switching
+// PressureBarrier only measures distance, so a fast flick to the edge
+// counts as a full push. In push mode the pointer must then also stay at
+// the edge this long before the switch; leaving it earlier cancels.
+const DWELL_MS = 500;
+const DWELL_POLL_MS = 50;
 // After the keyboard and mouse arrive, overshooting while coming across
 // shouldn't send them straight back.
 const ARRIVAL_GRACE_MS = 3000;
@@ -69,6 +74,7 @@ export default class MullionExtension extends Extension {
         this._lastSwitch = 0;
         this._lastArrival = 0;
         this._checking = false;
+        this._dwellId = 0;
         this._popup = new EdgePopup(edge => this._runCross(edge));
         this._configFile = Gio.File.new_for_path(GLib.build_filenamev([
             GLib.get_user_config_dir(), 'mullion', 'config.json']));
@@ -157,6 +163,7 @@ export default class MullionExtension extends Extension {
     }
 
     _clear() {
+        this._cancelDwell();
         for (const p of this._pressure)
             p.destroy();
         for (const b of this._barriers)
@@ -258,7 +265,7 @@ export default class MullionExtension extends Extension {
             return;
 
         if (this._mode === 'push') {
-            this._runCross(edge);
+            this._dwell(edge);
             return;
         }
         // "button": offer the pop-up if this edge leads to the other computer.
@@ -274,6 +281,45 @@ export default class MullionExtension extends Extension {
             console.log(`Mullion: ${edge} edge reached, offering to switch to ${out}`);
             this._popup.show(edge, out, this._monitor, y);
         });
+    }
+
+    // Push mode: switch once the pointer has stayed at `edge` for DWELL_MS.
+    _dwell(edge) {
+        if (this._dwellId)
+            return;
+        const start = GLib.get_monotonic_time() / 1000;
+        this._dwellId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, DWELL_POLL_MS, () => {
+            if (!this._atEdge(edge)) {
+                console.log(`Mullion: pointer left the ${edge} edge too soon, not switching`);
+                this._dwellId = 0;
+                return GLib.SOURCE_REMOVE;
+            }
+            if (GLib.get_monotonic_time() / 1000 - start < DWELL_MS)
+                return GLib.SOURCE_CONTINUE;
+            this._dwellId = 0;
+            this._runCross(edge);
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    _cancelDwell() {
+        if (this._dwellId) {
+            GLib.source_remove(this._dwellId);
+            this._dwellId = 0;
+        }
+    }
+
+    // Is the pointer against the monitor's `edge`, with no button held?
+    _atEdge(edge) {
+        const mon = this._monitor;
+        if (!mon)
+            return false;
+        const [x, y, mods] = global.get_pointer();
+        const buttons = Clutter.ModifierType.BUTTON1_MASK |
+            Clutter.ModifierType.BUTTON2_MASK | Clutter.ModifierType.BUTTON3_MASK;
+        if (mods & buttons || y < mon.y || y >= mon.y + mon.height)
+            return false;
+        return edge === 'left' ? x <= mon.x : x >= mon.x + mon.width - 1;
     }
 
     _runCross(edge) {
